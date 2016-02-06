@@ -1,0 +1,13 @@
+Arch uses systemd to run daemons.
+
+Create a service file in:
+/etc/systemd/system/<name-of-service>.service
+
+For contents, see unsecure_chat.service file for example.
+
+Then, in command line, execute following two commands:
+> sudo systemctl start <name-of-service>
+> sudo systemctl enable <name-of-service>
+
+The second command ensures that daemon is started on boot.
+There are special parameters that can go into service file to handle restarts upon daemon crash/exit, and logging using syslog, etc.
