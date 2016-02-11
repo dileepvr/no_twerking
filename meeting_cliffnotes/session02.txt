@@ -1,0 +1,22 @@
+- GABRIEL -
+
+I brought a peer to peer chat service (written in python)
+It's notable quality is that it can maintain communication without a server mediating the connection
+
+  BASIC OPERATION
+the script is "~/no_twerking/scripts/peer_to_peer/DATAGRAM_peers.py". When you run it you will be prompted to enter a username, enter it and press ENTER. Then you will be prompted to enter an address to connect to. In this prompt there are a few options
+
+  - enter nothing: the script will just wait for an external connection
+  - enter a name/IP address: the script will send messages to the entered IP trying to connect to the default port (12345)
+  - enter an IP (IP) and port number (PORT) in the format "IP:PORT":connect to IP at port number PORT
+  - ehter an IP ans the string "scan" in the format "IP:scan": connect to IP but scan all ports looking for a connection
+
+  Send messages by typing them in and press enter.
+
+  OPERATION
+
+to operate, copy the script "~/no_twerking/scripts/peer_to_peer/DATAGRAM_peers.py" to the peer computers that wish to communicate, and the server computer that will connect them. Run the script on the server and go through all the prompts. Then run the script on the other computers, and enter the server IP at the second prompt (connection address). The connection will be established when a message is sent from the peer computers. 
+
+IP and port numbers are exchanged between all peers when a new peer connects. After peers are able to communicate, the server can shut down and the peer computers will remain in communication.
+
+The way this is acheived is by communicating the IP and port from which messages are being sent so that messages can be sent directly to the port (as assigned by the router which is relaying messages to teh internet). Each peer keeps a list of all peers on the line so that they can send messages directly, instead of relying on the server to do it for them.
