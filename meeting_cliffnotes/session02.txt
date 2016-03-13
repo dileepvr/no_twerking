@@ -20,3 +20,63 @@ to operate, copy the script "~/no_twerking/scripts/peer_to_peer/DATAGRAM_peers.p
 IP and port numbers are exchanged between all peers when a new peer connects. After peers are able to communicate, the server can shut down and the peer computers will remain in communication.
 
 The way this is acheived is by communicating the IP and port from which messages are being sent so that messages can be sent directly to the port (as assigned by the router which is relaying messages to teh internet). Each peer keeps a list of all peers on the line so that they can send messages directly, instead of relying on the server to do it for them.
+
+
+
+- DILEEP -
+
+All my demos were executed on the linux command line.
+
+First, I demostrated how to send email to an smtp (simple mail transfer protocol) server using a live tcp connection. This can be done using commandline tools like 'telnet', or 'netcat' ('nc'). To demonstrate, I connect to smtp.uoregon.edu and send an email to myself (dileep@uoregon.edu) and pretend to be "foo@bar.com" thusly. The smtp protocol uses port 25 (which is generally blocked by home ISPs to prevent spam (it doesn't prevent anything)).
+
+Executions are marked $>, replies are marked < at start of line:
+
+$> netcat smtp.uoregon.edu 25
+<  220 smtp.uoregon.edu ESMTP Sendmail 8.14.4/8.14.4; Sun, 13 Mar 2016 14:50:58 -0700
+$> HELO uoregon.edu
+<  250 smtp.uoregon.edu Hello d130-148.uoregon.edu [128.223.130.148], pleased to meet you
+$> MAIL FROM: foo@bar.com
+<  250 2.1.0 foo@bar.com... Sender ok
+$> RCPT TO: dileep@uoregon.edu
+<  250 2.1.5 dileep@uoregon.edu... Recipient ok
+$> DATA
+<  354 Enter mail, end with "." on a line by itself
+$> SUBJECT: this is the subject line
+$> test message.
+$> .
+<  250 2.0.0 u2DLowij021920 Message accepted for delivery
+$> QUIT
+<  221 2.0.0 smtp.uoregon.edu closing connection
+
+The mail should appear in the inbox (assuming it wasn't classified as spam.
+The capitalized keywords "HELO", "MAIL FROM", etc. need not be capitalized. These keywords are the minimum required (subject is optional). More options exist (like send date/time, attachments, etc.). I've noticed that setting a bad date/time causes the uoregon smtp server to classify it as spam and filter it out.
+
+The numbers at the start of replies are all standards, and were layed out in the original smtp RFC document RFC821 in 1982. There have since been updates in RFC822 and RFC2822.
+
+Although this allows one to set a bogus from-id, the email packet itself is marked with the source IP. Also, the TCP session is unencrypted, and can be viewed by anyone who intercepts. Modern smtp servers support transport layer security (TLS). Try connecting to smtp.google.com on port 25, and you will soon encounter a stage where you'll need to execute "STARTTLS" command, live. Then there is a key exchange step, that is best done programatically, rather than by hand (interactively).
+
+The proper way to submit mail is not to use port 25, but to use the submission protocol (RFC2476) on the default port 587. This will also require authentication/TLS (try it on smtp.uoregon.edu).
+
+Sending mail through browser using webmail client should be fine, as it uses https (RFC2818, port 443), which has TLS.
+
+You can also log into account and fetch/read email interactively using the POP3 protocol (RFC1939, port 110), but again, this is unencrypted, and requires you to pass your username and password to the server in plaintext.
+
+
+Next, I demonstrated the use of the command "netstat -ap". Run as sudo. The "-ap" flags cause the command to display all currently open sockets. The start of the list has internet sockets, and the rest is full of UNIX internal sockets (ignore them for now). The list is good because it lists the local port number being used in communication (which is randomly chosen by the kernel). I demonstrated this with local netcat connections, remote smtp, local Tadpole, and the unsecure_chat program running as a daemon on fakemsi on port 13373. There is a "status" column with values like "LISTEN", "ESTABLISHED", and "WAIT", etc. which is very interesting.
+
+
+After this, I showed rudimentary commandline port scanning. The hard way is to use netcat. To scan ports 1 to 1024 on shell, try: "netcat -zv shell.uoregon.edu 0-1024". This takes a long time however, since netcat tries to open a connection to each and waits for timeout.
+
+The proper way is to use a hyperoptimized professional tool like nmap. nmap is many flags (see https://nmap.org/bennieston-tutorial/). Try: "nmap -sV -p 1-1024 shell.uoregon.edu". Replace -sV flags with -sT. The both of these take some time.
+
+The quickest is the SYN (stealth) scanning (flags -sS).
+
+
+Next I attempted to setup port forwarding through a home router hooked up to UOethernet, but failed. Gabe's hole-punching UDP method seems to work in application layer.
+
+Lastly, I showed how to view the local routing table using "netstat -nr", and showed how the "dhcpcd" daemon (responsible to negotiating with ethernet server and leasing an ip address) fills out the DNS nameservers to be used into the file /etc/resolv.conf. This behavoir can be overruled if one wants to permanently use custom DNS servers. DNS servers resolve names into IP addresses.
+
+
+- WES -
+
+Wes is yet to fill this space up. Dileep recalls him introducing "traceroute", and a program that "stores" a file in transit ping packets by continously bouncing it to and from a distant ip. Essentially, storing data in network router buffers. The data always remains in transit, and can be lost. He demoed this with a simple one line text file.
