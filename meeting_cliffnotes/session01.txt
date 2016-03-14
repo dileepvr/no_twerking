@@ -1,0 +1,10 @@
+- DILEEP -
+
+This was the inaugural session. We mostly talked about how some IPs are reserved for LAN subnets (like the ones starting from 192.168.0.0/24) and others are public.
+
+We each had worked on our own code for sending and receiving TCP and UDP packets. It was all done through sockets. TCP connections are live (a session is opened with the destination IP on specific ports at both ends), while UDP are fire and forget, with no guarantee of delivery (no confirmation). TCP makes sure packets are delivered. It buffers and repeats, and looks for acknowledgement.
+
+Then I demoed Tadpole_SDL on a laptop (https://github.com/dileepvr/Tadpole_SDL).
+Its a live game with leaderboard, where you can spawn a player by opening a TCP connection.
+Connection is closed if the player dies.
+I used an ESP8266 module as a tiny wifi access point on a breadboard.
