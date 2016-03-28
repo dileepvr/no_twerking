@@ -1,6 +1,10 @@
 Using tcpdump to collect network traffic and wireshark to analyze the data -
 wireshark analyzes in real time as it captures, and so tends to drop some
 packets. The ubiquity of printers trying to negotiate with machines. Just how
-noisy the internet is.
+noisy the internet is. Dileep provided a number of pcap files which could be
+looked over using wireshark as ready examples of how to interpret captured
+data.
 Poisoning ARP tables for MITM and other means of intercepting and manipulating
 comms not meant for you.
+Further side discussions were had regarding the underlying topology of e.g.
+wired ethernet connection versus wireless 802.11
