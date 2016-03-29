@@ -1,3 +1,5 @@
+- JESSE -
+
 Using tcpdump to collect network traffic and wireshark to analyze the data -
 wireshark analyzes in real time as it captures, and so tends to drop some
 packets. The ubiquity of printers trying to negotiate with machines. Just how
@@ -8,3 +10,193 @@ Poisoning ARP tables for MITM and other means of intercepting and manipulating
 comms not meant for you.
 Further side discussions were had regarding the underlying topology of e.g.
 wired ethernet connection versus wireless 802.11
+
+- DILEEP -
+
+I used demo packet capture files and some RSA keys. See meetings04/pcaps folder for packet capture files. See meetings04/openssl folder for certs, keys, and log files referred to here. These files have private information (MAC addresses, IP addresses) and so, the "meetings04" folder is only inside fakemsi home folder, and not in git repo.
+
+Full spiel in brief.
+
+tcpdump is an amazing command line tool. But just executing it shows how busy network activity is.
+Execute "tcpdump -nS".
+
+To better filter, use flags and keywords and logical statements.
+A good primer is at https://danielmiessler.com/study/tcpdump/
+
+tcpdump flags:
+
+-n == don't resolve IP names
+-nn == don't resolve IP names or port names
+-X == display both hex and ascii content
+-XX == same as X, but also shows ethernet header
+-S == change display of sequence numbers to absolute rather than relative
+-s <number> == specify bytes captured (default 96, 0 == all, 1514 is max?)
+-i <interface> == Eg. "eth0", "any"
+-D == lists available interfaces
+-q == quiet (less verbose)
+-v -vv -vvv == increase amount of packet information
+-c <number> == specify packet count to capture
+icmp == only get icmp packets
+-e == get ethernet header as well
+-E == -E decrypt IPSEC traffic by providing an encryption key
+
+Better to use tcpdump to record filtered communication (without
+realtime analysis), then perform analysis using wireshark.
+
+Exercise:
+
+On local machine, run "nc -l -p 13375".
+On remote machine, run "nc <ip-address> 13375".
+Send three strings of text: "hello", "test message", and "over".
+Then hit ^C to close connection.
+
+Record packets on local machine using various options:
+
+tcpdump src port 13375 or dst port 13375 -w srcordst01.pcap
+
+Then read packet capture file "srcordst01.pcap" (see meetings04/pcaps folder) in wireshark.
+
+Wireshark presents layer-based breakdown analysis for popular protocols.
+
+Conversion of IP address to HEX
+
+192.168.0.87 == C0A8 0057
+192.168.0.218 == C0A8 00DA
+
+Port numbers in HEX
+
+13375 == 343F
+48710 == BE46
+
+IP header puts src ip first, then destination ip
+tcp header puts src port first, then dst port
+
+Check out IP header diagram on http://www.openwall.com/presentations/IPv6/img18.html
+Especially note "time-to-live" field, which traceroute relies on.
+
+For details about tcp header, see http://www.networksorcery.com/enp/protocol/tcp.htm
+
+RST flag tells receiver to close socket and assume tcp connection is closed.
+RST packets should not be seen normally.
+
+Sample pcaps for wireshark available at : https://wiki.wireshark.org/SampleCaptures#Sample_Captures
+
+MAC address have first 3 bytes reserved for manufacturer ID, assigned by a standards body: https://www.iplocation.net/mac-address
+
+Ethernet packet frame-structure has following structure:
+
+Preamble (7 octets)
+Start of frame delimiter (1 octet)
+MAC dest (6 octets)
+MAC src  (6 octets)
+optional 802.1Q tag (4 octets)
+Ethernet type or length (2 octets)
+Payload (46 - 1500 octets)
+Frame check sequency (32-bit CRC) (4 octets)
+Interpacket gap (12 octets)
+See diagram on wikipedia entry on "ethernet frame"
+
+tcpdump appears to preserve only 14 bytes/octets, the two MAC addresses and the ethernet type field.
+
+How did sender know destination's MAC address. There are packets
+called ARP (address resolution protocol) requests, that linux sends
+out to map ip addresses to MAC addresses. It maintains an ARP table,
+which can be viewed with command "arp -a".  ARP request can occur before
+a conversation. But gratuitous ARPs can occur.
+
+To quote https://wiki.wireshark.org/AddressResolutionProtocol :
+
+A peculiarity of ARP is that since it tries to reduce/limit the amount
+of network traffic used for ARP a host MUST use all available
+information in any ARP packet that is received to update its
+ARP_Table. Thus sometimes a host sends out ARP packets NOT in order to
+discover a mapping but to use this side effect of ARP and preload the
+ARP table of a different host with an entry. These special ARP packets
+are referred to as Gratuitous_ARPs and Wireshark will detect and flag
+the most common versions of such ARPs in the packet summary pane.
+
+On a big ethernet network (like University), there are many visible arp packets.
+The computer NIC appears to be receiving other host's ARP requests and replies, as is revealed by executing the command:
+sudo tcpdump arp
+
+This is not true for wifi, because star connected.
+
+ARP requests are always broadcasted to everyone, and only relevant IP will reply.
+
+wifi arp table by default has one entry. Trying to run "nmap -sP 10.111.64.1/23" will broadcast arp request for entire LAN and populate arp table.
+
+Kickass explanation with example at http://www.tildefrugal.net/tech/arp/
+
+Still unresolved issues left. For example, in netcat chat between respberry pi and citadel at home through a router, individual end host mac addresses appear on each frame.
+But in netcat chat between frankenfly (nc_talker.pcap) and fakemsi (nc_listener.pcap), outgoing from both have gateway MAC, but incoming from both have mystery MAC not on any arp table (which is okay).
+But http request to www.example.com over wifi go TO some mysterious MAC not on any table, even though DNS queries go to gateway MAC. wifi is weird.
+
+Captured telnet and netcat sessions with smtp.uoregon.edu into capture packets. Difference is that netcat closes with RST at the end.
+Example command: sudo tcpdump -w smtp_netcat.pcap '(src smtp.uoregon.edu or dst port 25)' -s 1514
+
+To record http and https visits, execute command:
+sudo tcpdump -w <filename>.pcap 'udp port 53 or (src example.com or dst example.com)'
+
+Then visit http://example.com and/or https://example.com using browser from command line.
+
+On my ethernet machine, this produced a lot of spurious dns queries.
+Chromium and firefox are too noisy (too many browser extensions). Using midori instead.
+
+First, the tcpdump command itself needs to send dns queries. To record
+baseline, execute: sudo tcpdump -w nobrowser_commandbaseline.pcap 'udp
+port 53 or (src example.com or dst example.com)' This generates
+starting background DNS queries, which on my desktop seem to include
+printer IPs (due to libCUPS). So I tried it on laptop without libCUPS
+installed. Generated clean files:
+sp_command_baseline.pcap
+sp_midori_http.pcap
+sp_midori_https.pcap
+
+DNS server checks out with contents of /etc/resolv.conf
+
+Regarding https handshake, here is a good primer: http://www.moserware.com/2009/06/first-few-milliseconds-of-https.html
+
+The actual signature is simply called "encrypted" in wireshark.
+
+Chatting securely on terminal using openssl: https://forums.linuxmint.com/viewtopic.php?t=170538
+
+For testing openssl chat, generate keys using:
+openssl req -x509 -nodes -newkey rsa:4096 -batch -keyout private.key -out public.cert
+
+Then, run:
+sudo tcpdump -w openssl_chat.pcap src port 13377 or dst port 13377 -i lo
+
+Then in one terminal, run:
+openssl s_server -key private.key -cert public.cert -accept 13377
+
+Then in another, run:
+openssl s_client -connect localhost:13377
+
+Close connection on client side using ctrl-C.
+
+Coversation recorded was:
+C: hello
+C: test message
+C: over
+S: bye
+C: kthnxbye
+
+See s_client.out and s_server.out for debug outputs.
+Packet 10 has session ticket.
+
+To get wireshark to recognize and decrypt data, go to edit -> preferences
+Scroll down to SSL, add new RSA key. Enter protocol as "http". Presto.
+Wireshark still can't decrypt data because we used ECDH, which requires Pre-master key.
+
+To decrypt, we change cipher on server side with command:
+openssl s_server -cipher AES256-SHA -key private.key -cert public.cert -accept 1337
+
+Now this, wireshark will decrypt.
+
+See s_server_AES256-SHA.out and s_client_AES256-SHA.out for differences.
+
+Fun exercises:
+
+Look into example pcaps for ATM traffic, etc.
+Analyze packets from Gabe's holepunching script.
+Study arp poisoning.
