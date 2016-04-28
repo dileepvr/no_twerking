@@ -1,0 +1,182 @@
+- DILEEP -
+
+Fun details about Tor were discussed over beer. The following are the essentials with links:
+
+https://tails.boum.org/contribute/design/
+
+In order to prevent accidental leaks of information, proxy bypass
+attacks on Tor and similar, the access to the Internet MUST be heavily
+restricted by a firewall:
+
+1. All non-TCP transport layer protocols SHOULD be dropped as they are
+not supported by the Tor network.
+
+2. All TCP traffic not explicitly targeting Tor SHOULD be redirected
+to the transparent proxy (i.e. to the TransPort as set in torrc);
+alternatively this traffic SHOULD be dropped (then only applications
+explicitly configured to use Tor will reach the Internet).
+
+3. All DNS lookups SHOULD be made through the Tor network
+(i.e. redirected to DNSPort as set in torrc).
+
+4. All IPv6 traffic SHOULD be forbidden as it is not supported by the
+Tor network.
+
+
+https://www.torproject.org/docs/faq#KeyManagement
+
+Every Tor relay has a public decryption key called the "onion
+key". Each relay rotates its onion key once a week.
+
+When the Tor client establishes circuits, at each step it demands that
+the Tor relay prove knowledge of its onion key
+(https://svn.torproject.org/svn/projects/design-paper/tor-design.html#subsec:circuits). That
+way the first node in the path can't just spoof the rest of the
+path. Because the Tor client chooses the path.
+
+Each relay has a long-term public signing key called the "identity
+key". Each directory authority additionally has a "directory signing
+key". The directory authorities provide a signed list
+(https://gitweb.torproject.org/torspec.git/tree/dir-spec.txt) of all
+the known relays, and in that list are a set of certificates from each
+relay (self-signed by their identity key) specifying their keys,
+locations, exit policies, and so on.
+
+The Tor software comes with a built-in list of location and public key
+for each directory authority. So the only way to trick users into
+using a fake Tor network is to give them a specially modified version
+of the software.
+
+In order to be certain that it's really signed by us, you need to have
+met us in person and gotten a copy of our GPG key fingerprint, or you
+need to know somebody who has. If you're concerned about an attack on
+this level, we recommend you get involved with the security community
+and start meeting people.
+
+
+https://www.reddit.com/r/TOR/comments/29aha8/are_tor_directory_servers_tors_achilles_heel/
+
+If the authorities were all shut down then clients would still be able
+to get the available nodes. Your client doesn't actually get the relay
+documents directly from the authorities, but from caches (look for Tor
+nodes with the V2dir flag.) Beyond this, your client will cache relay
+information locally.
+
+Tor is programmed to use the latest available relay documents, so if
+for some weird reason all 8 authorities went offline for extended
+periods of time, the Tor nodes that act as directory caches should
+still be able to distribute this information to new clients. And old
+clients will of course already have the information they need to build
+a circuit.
+
+So no, even if they were all shut down it would not be the end of the
+Tor network.
+
+As for compromised directory authorities, as of version 2 (IIRC) of
+the directory protocol, on top of downloading the actual relay
+documents, your client has also been getting hashes of the relay
+documents signed by other authorities. And your client will only trust
+relay documents if they match up with the hashes of at least half the
+authorities.
+
+So if one or two or three authorities are compromised, they should not
+be able to give distorted versions of the Tor network to anybody. If
+all 8 authorities were compromised, then yes, it would be possible for
+them to only clients a list of compromised Tor relays, thereby
+compromising everybody's anonymity. But the 8 authorities are run by
+separate people all of whom are heavily engaged in Tor. I would find
+it more likely that a backdoor be added to, say the TBB (single point
+of failure: Erinn Clark.) Than all 8 authorities be compromised (8
+people have to be compromised.)
+
+
+Full relay list: https://torstatus.blutmagie.de/
+
+
+
+http://jordan-wright.com/blog/2014/12/19/what-happens-if-tor-directory-authorities-are-seized/
+
+There are currently 10 DA’s whose information is hardcoded into Tor
+clients - one of which (Tonga) is used for bridge access. This means
+that, to keep the network updated and stable, 5 DA’s must still be
+operational. If a seizure attempt is able to take down 5 or more DA’s,
+the network will enter an unstable state, and the integrity of any
+updates to the consensus cannot be guaranteed.
+
+
+Geolocation and organization of each DA: https://news.ycombinator.com/item?id=8775009
+
+
+
+https://www.torproject.org/docs/bridges.html.en
+
+Bridge relays (or "bridges" for short) are Tor relays that aren't
+listed in the main Tor directory. Since there is no complete public
+list of them, even if your ISP is filtering connections to all the
+known Tor relays, they probably won't be able to block all the
+bridges. If you suspect your access to the Tor network is being
+blocked, you may want to use bridges.
+
+
+How to become a relay: https://www.torproject.org/docs/tor-doc-relay.html.en
+
+
+How to get bridges: https://www.deepdotweb.com/jolly-rogers-security-guide-for-beginners/hiding-tor-from-your-isp-part-1-bridges-and-pluggable-transports/
+
+
+https://www.torproject.org/docs/hidden-services.html.en
+
+Step one: A hidden service needs to advertise its existence in the Tor
+network before clients will be able to contact it. Therefore, the
+service randomly picks some relays, builds circuits to them, and asks
+them to act as introduction points by telling them its public key. By
+using a full Tor circuit, it's hard for anyone to associate an
+introduction point with the hidden server's IP address. While the
+introduction points and others are told the hidden service's identity
+(public key), we don't want them to learn about the hidden server's
+location (IP address).
+
+Step two: The hidden service assembles a hidden service descriptor,
+containing its public key and a summary of each introduction point,
+and signs this descriptor with its private key. It uploads that
+descriptor to a distributed hash table. The descriptor will be found
+by clients requesting XYZ.onion where XYZ is a 16 character name
+derived from the service's public key. After this step, the hidden
+service is set up.
+
+Step three: A client that wants to contact a hidden service needs to
+learn about its onion address first. After that, the client can
+initiate connection establishment by downloading the descriptor from
+the distributed hash table
+(http://donncha.is/2013/05/trawling-tor-hidden-services/). If there is
+a descriptor for XYZ.onion (the hidden service could also be offline
+or have left long ago, or there could be a typo in the onion address),
+the client now knows the set of introduction points and the right
+public key to use. Around this time, the client also creates a circuit
+to another randomly picked relay and asks it to act as rendezvous
+point by telling it a one-time secret.
+
+Step four: When the descriptor is present and the rendezvous point is
+ready, the client assembles an introduce message (encrypted to the
+hidden service's public key) including the address of the rendezvous
+point and the one-time secret. The client sends this message to one of
+the introduction points, requesting it be delivered to the hidden
+service. Again, communication takes place via a Tor circuit: nobody
+can relate sending the introduce message to the client's IP address,
+so the client remains anonymous.
+
+Step five: The hidden service decrypts the client's introduce message
+and finds the address of the rendezvous point and the one-time secret
+in it. The service creates a circuit to the rendezvous point and sends
+the one-time secret to it in a rendezvous message.
+
+In the last step, the rendezvous point notifies the client about
+successful connection establishment. After that, both client and
+hidden service can use their circuits to the rendezvous point for
+communicating with each other. The rendezvous point simply relays
+(end-to-end encrypted) messages from client to service and vice versa.
+
+One of the reasons for not using the introduction circuit for actual
+communication is that no single relay should appear to be responsible
+for a given hidden service. This is why the rendezvous point never
+learns about the hidden service's identity.
